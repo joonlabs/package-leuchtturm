@@ -1,0 +1,45 @@
+{
+  "name": "joonlabs/package-leuchtturm",
+  "description": "This package provides automatic creation of GraphQL types and fields from Eloquent Models.",
+  "keywords": ["joonlabs", "leuchtturm", "laravel"],
+  "license": "MIT",
+  "support": {
+    "source": "https://github.com/joonlabs/package-leuchtturm"
+  },
+  "authors": [
+    {
+      "name": "Julius Türich",
+      "email": "info@joonlabs.com"
+    }
+  ],
+  "require": {
+    "php": "^8.0",
+    "joonlabs/php-graphql": "^v2.0.0",
+    "illuminate/support": "^6.9|^7.0|^8.0|^9.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^8.0|^9.3"
+  },
+  "autoload": {
+    "psr-4": {
+      "Leuchtturm\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Leuchtturm\\Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Leuchtturm\\LeuchtturmServiceProvider"
+      ]
+    }
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
