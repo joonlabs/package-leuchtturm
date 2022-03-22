@@ -13,7 +13,9 @@ class LeuchtturmServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->singleton("Leuchtturm", function () {
+            return new LeuchtturmManager();
+        });
     }
 
     /**
@@ -26,7 +28,7 @@ class LeuchtturmServiceProvider extends ServiceProvider
         if (app()->runningInConsole()) {
             // publish config when running in console
             $this->publishes([
-                __DIR__.'/../config/leuchtturm.php' => config_path('leuchtturm.php'),
+                __DIR__ . '/../config/leuchtturm.php' => config_path('leuchtturm.php'),
             ], 'leuchtturm-config');
         }
     }
