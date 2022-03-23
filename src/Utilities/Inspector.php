@@ -26,44 +26,10 @@ class Inspector
     ];
 
     /**
-     * @throws ReflectionException
      */
-    static function getProperties(string $class)
+    static function getProperties(string $class): array
     {
-        // check if class is cached
-        if (array_key_exists($class, self::$cache["constructor"]))
-            return self::$cache["constructor"][$class];
-
-        // obtain parameters and properties
-        $parameters = [];
-        $properties = [];
-        $reflection = new \ReflectionClass($class);
-
-        foreach ($reflection->getProperties() as $property) {
-            if(!$property->isPrivate())
-                $properties[$property->getName()] = $property;
-        }
-
-        foreach ($reflection->getConstructor()->getParameters() as $parameter) {
-            $parameters[$parameter->getName()] = $parameter;
-        }
-
-        // create \Leuchtturm\Utilities\Reflection\ReflectionProperty for the properties
-        return array_map(function ($property) use ($parameters) {
-            $hasDefaultValue = $property->hasDefaultValue();
-            $defaultValue = $property->getDefaultValue();
-            if (!$hasDefaultValue && array_key_exists($property->getName(), $parameters)) {
-                $hasDefaultValue = $parameters[$property->getName()]->isDefaultValueAvailable();
-                if ($hasDefaultValue)
-                    $defaultValue = $parameters[$property->getName()]->getDefaultValue();
-            }
-
-            return (new ReflectionProperty())
-                ->setName($property->getName())
-                ->setType($property->getType())
-                ->setHasDefaultValue($hasDefaultValue)
-                ->setDefaultValue($defaultValue);
-        }, $properties);
+        return [];
     }
 
     /**
@@ -93,7 +59,7 @@ class Inspector
                 ->setKind($property["kind"])
                 ->setHasDefaultValue(false)
                 ->setIsArrayType($property["isArray"])
-                ->addGuardian($property["guardians"]);
+                ->addScope($property["scopes"]);
         }, $properties);
 
         return static::fullQualifyProperties($properties, $reflection->getNamespaceName());
@@ -164,14 +130,14 @@ class Inspector
                     "kind" => $kind,
                     "type" => $matches[2][0],
                     "name" => substr($matches[6][0], 1),
-                    "guardians" => []
+                    "scopes" => []
                 ];
             }
         }
 
-        // match guardians
+        // match scopes
         foreach ($lines as $line) {
-            $regex = '/ ?\*? ?@protect (\$([A-Z]|[a-z]|_)+) (\??(\\\\?([A-Z]|[a-z]|_)+)+)/m';
+            $regex = '/ ?\*? ?@oauth-scope (\$([A-Z]|[a-z]|_)+) (\??(\\\\?([A-Z]|[a-z]|_)+)+)/m';
 
             preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
 
@@ -179,7 +145,7 @@ class Inspector
                 $name = substr($matches[1][0], 1);
                 foreach($textProperties as &$property){
                     if($property["name"] === $name)
-                        $property["guardians"][] = $matches[3][0];
+                        $property["scopes"][] = $matches[3][0];
                 }
             }
         }

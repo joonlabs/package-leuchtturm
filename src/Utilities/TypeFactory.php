@@ -353,17 +353,17 @@ class TypeFactory
             if ($property->isReadable()) {
                 // get dao from property
                 $dao = $property->getType();
-                $guardians = $property->getGuardians();
+                $scopes = $property->getScopes();
 
                 $fields[] = new GraphQLTypeField(
                     $fieldname,
                     $property->isNullable()
                         ? $this->manager->build($dao)
                         : new GraphQLNonNull($this->manager->build($dao)),
-                    resolve: function ($parent) use ($manager, $fieldname, $dao, $guardians) {
+                    resolve: function ($parent) use ($manager, $fieldname, $dao, $scopes) {
 
                         // protect with guards
-                        $this->validateRequestWithGuardians($guardians);
+                        $this->validateAuthorization($scopes);
 
                         $daoClass = $manager->factory($dao)->getDAO();
                         return $parent->{$fieldname};
@@ -387,8 +387,8 @@ class TypeFactory
         foreach ($this->hasMany as $fieldname => $property) {
             // add property if readable
             if ($property->isReadable()) {
-                // get the guardians and inner type
-                $guardians = $property->getGuardians();
+                // get the protecting scopes and inner type
+                $scopes = $property->getScopes();
                 $innerType = $this->manager->build($property->getType());
 
                 $fields[] = new GraphQLTypeField(
@@ -396,9 +396,9 @@ class TypeFactory
                     new GraphQLNonNull(new GraphQLList(
                         $property->isNullable() ? $innerType : new GraphQLNonNull($innerType)
                     )),
-                    resolve: function ($parent) use ($guardians, $fieldname) {
+                    resolve: function ($parent) use ($scopes, $fieldname) {
                         // protect with guards
-                        $this->validateRequestWithGuardians($guardians);
+                        $this->validateAuthorization($scopes);
 
                         return $parent->{$fieldname};
                     }
@@ -410,24 +410,26 @@ class TypeFactory
     }
 
     /**
-     * Validates the current request with the guardians.
+     * Validates the current request with the scopes.
      *
-     * @param array $guardians
+     * @param array $scopes
      * @throws UnauthenticatedError
      */
-    private function validateRequestWithGuardians(array $guardians)
+    private function validateAuthorization(array $scopes)
     {
-        // if no guardians available -> return
-        if (empty($guardians))
+        // return if no scopes available
+        if (empty($scopes))
             return;
 
-        // check if any guardian can validate the request
-        foreach ($guardians as $guardian) {
-            throw new Exception("NOT IMPLEMENTED");
+        // iterate over all scopes
+        foreach ($scopes as $scope) {
+            if (request()->user()?->tokenCan($scope))
+                return;
         }
 
-        // else throw unauthenticated error
-        throw new UnauthenticatedError("Access denied");
+        throw new UnauthenticatedError(
+            "Access denied. Missing one of the following scopes: [" .
+            implode(", ", $this->scopes) . "]");
     }
 
     /**
@@ -475,7 +477,7 @@ class TypeFactory
 
         // add doc properties
         foreach ($this->docProperties as $name => $docProperty) {
-            if (!in_array($name, $seenDocProperties)){
+            if (!in_array($name, $seenDocProperties)) {
                 // continue if is not writable on input type
                 if ($forInputType && !$docProperty->isWritable())
                     continue;
@@ -525,7 +527,7 @@ class TypeFactory
             "string" => new GraphQLString(),
             "int" => new GraphQLInt(),
             "float" => new GraphQLFloat(),
-            "bool" => new GraphQLBoolean(),
+            "bool", "boolean" => new GraphQLBoolean(),
         };
 
         return $property->isNullable() ? $type : new GraphQLNonNull($type);

@@ -44,11 +44,11 @@ class ReflectionProperty
     private mixed $defaultValue;
 
     /**
-     * Guardians that protect the property.
+     * Scopes that protect the property.
      *
      * @var array
      */
-    private array $guardians = [];
+    private array $scopes = [];
 
     /**
      * Determines wether the property is an array type.
@@ -97,9 +97,9 @@ class ReflectionProperty
      */
     public function isPrimitiveType(): bool
     {
-        return match($this->getType()){
-            "int", "bool", "string", "float" => true,
-            default  => false
+        return match ($this->getType()) {
+            "int", "bool", "boolean", "string", "float" => true,
+            default => false
         };
     }
 
@@ -109,7 +109,7 @@ class ReflectionProperty
      */
     public function setType(string $type): ReflectionProperty
     {
-        if(str_starts_with($this->getType(), "?"))
+        if (str_starts_with($this->getType(), "?"))
             $this->type = "?$type";
         else
             $this->type = "$type";
@@ -171,37 +171,41 @@ class ReflectionProperty
     }
 
     /**
-     * Adds a guardian that protects the property.
+     * Adds a scope that protects the property.
      *
-     * @param string|array $guardian
+     * @param string|array $scopes
      * @return $this
      */
-    public function addGuardian(string|array $guardian): static
+    public function addScope(string|array $scopes): static
     {
-        if (is_string($guardian))
-            $guardian = [$guardian];
-        $this->guardians = $guardian;
+        if (is_string($scopes))
+            $scopes = [$scopes];
+
+        foreach ($scopes as $scope) {
+            $this->scopes[] = $scope;
+        }
+
         return $this;
     }
 
     /**
-     * Returns all guardians of the property.
+     * Returns all scopes for the property.
      *
      * @return array
      */
-    public function getGuardians(): array
+    public function getScopes(): array
     {
-        return $this->guardians;
+        return $this->scopes;
     }
 
     /**
-     * Returns whether the property has guardians.
+     * Returns whether the property is protected by scopes.
      *
      * @return bool
      */
-    public function hasGuardians(): bool
+    public function protectedByScopes(): bool
     {
-        return !empty($this->guardians);
+        return !empty($this->scopes);
     }
 
     /**

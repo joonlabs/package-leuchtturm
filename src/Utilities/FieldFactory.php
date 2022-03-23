@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
+use Illuminate\Support\Facades\Auth;
 use Leuchtturm\LeuchtturmException;
 use ReflectionException;
 
@@ -64,18 +65,27 @@ class FieldFactory
     private string $operation;
 
     /**
-     * Guardian that protects the field.
+     * Scopes that needed to be present in the requests token to access the field.
      *
      * @var string|null
      */
-    private ?string $guardian = null;
+    private array $scopes = [];
 
     /**
-     * Guardian that verifies the ownership and protects the field.
+     * Scopes that needed to be present in the requests token to access the field while the requsting user
+     * must be the identify of the ressource.
      *
      * @var string|null
      */
-    private ?string $ownerGuardian = null;
+    private array $identityScopes = [];
+
+    /**
+     * The column / property in the model that referecnes the auhenticated user and should be used for identity
+     * checks on request validation.
+     *
+     * @var string
+     */
+    private string $identityColumn = "user_id";
 
     /**
      * Callback that is executed before the actual execution of the field resolver.
@@ -153,7 +163,7 @@ class FieldFactory
         return match ($this->operation) {
             FieldFactory::CREATE => function ($parent, $args) use ($dao, $pureName, $hasMany, $hasOne) {
                 // check permissions
-                $this->validateRequestWithGuardian();
+                $this->validateAuthorization();
 
                 // call preExec callback
                 $this->callPre($args);
@@ -190,9 +200,9 @@ class FieldFactory
                     $relationship = $entry->{$argument}();
                     foreach ($ids as $id) {
                         if ($relationship instanceof HasMany)
-                            $relationship->save(call_user_func("{$hasMany[$argument]->getType()}::get", $id));
+                            $relationship->save(call_user_func("{$hasMany[$argument]->getType()}::find", $id));
                         if ($relationship instanceof BelongsToMany)
-                            $relationship->save(call_user_func("{$hasMany[$argument]->getType()}::get", $id));
+                            $relationship->save(call_user_func("{$hasMany[$argument]->getType()}::find", $id));
                     }
                 }
 
@@ -203,13 +213,13 @@ class FieldFactory
             },
             FieldFactory::READ => function ($parent, $args) use ($dao) {
                 // check permissions
-                $this->validateRequestWithGuardian($args["id"]);
+                $this->validateAuthorization($args["id"]);
 
                 // call preExec callback
                 $this->callPre($args);
 
                 // get entry
-                $entry = call_user_func("$dao::get", $args["id"]);
+                $entry = call_user_func("$dao::find", $args["id"]);
 
                 // call postExec callback
                 $this->callPost($entry);
@@ -218,7 +228,7 @@ class FieldFactory
             },
             FieldFactory::UPDATE => function ($parent, $args) use ($dao, $pureName, $hasMany, $hasOne) {
                 // check permissions
-                $this->validateRequestWithGuardian($args["id"]);
+                $this->validateAuthorization($args["id"]);
 
                 // call preExec callback
                 $this->callPre($args);
@@ -240,13 +250,13 @@ class FieldFactory
                 }
 
                 // get entry
-                $entry = call_user_func("$dao::get", $args["id"]);
+                $entry = call_user_func("$dao::find", $args["id"]);
                 foreach ($args[$pureName] as $property => $value)
                     $entry->{$property} = $value;
 
                 // update relations
                 foreach ($relationsToAddMany as $argument => $ids) {
-                    if($ids === null)
+                    if ($ids === null)
                         continue;
 
                     $relationship = $entry->{$argument}();
@@ -265,24 +275,24 @@ class FieldFactory
                     // connect new entries
                     foreach ($ids as $id) {
                         if ($relationship instanceof HasMany) {
-                            $relationship->save(call_user_func("{$hasMany[$argument]->getType()}::get", $id));
+                            $relationship->save(call_user_func("{$hasMany[$argument]->getType()}::find", $id));
                         }
                         if ($relationship instanceof BelongsToMany)
-                            $relationship->save(call_user_func("{$hasMany[$argument]->getType()}::get", $id));
+                            $relationship->save(call_user_func("{$hasMany[$argument]->getType()}::find", $id));
                     }
                 }
 
                 foreach ($relationsToAddOne as $argument => $id) {
-                    if($id === null)
+                    if ($id === null)
                         continue;
 
                     $relationship = $entry->{$argument}();
 
                     // connect new entries
                     if ($relationship instanceof HasOne)
-                        $relationship->save(call_user_func("{$hasOne[$argument]->getType()}::get", $id));
+                        $relationship->save(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
                     if ($relationship instanceof HasOneOrMany)
-                        $relationship->save(call_user_func("{$hasOne[$argument]->getType()}::get", $id));
+                        $relationship->save(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
                 }
 
                 $success = $entry->update();
@@ -294,13 +304,13 @@ class FieldFactory
             },
             FieldFactory::DELETE => function ($parent, $args) use ($dao, $pureName) {
                 // check permissions
-                $this->validateRequestWithGuardian($args["id"]);
+                $this->validateAuthorization($args["id"]);
 
                 // call preExec callback
                 $this->callPre($args);
 
                 // delete entry
-                $entry = call_user_func("$dao::get", $args["id"]);
+                $entry = call_user_func("$dao::find", $args["id"]);
                 $success = $entry->delete();
 
                 // call postExec callback
@@ -310,7 +320,7 @@ class FieldFactory
             },
             FieldFactory::ALL => function ($parent) use ($dao, $this_) {
                 // check permissions
-                $this->validateRequestWithGuardian();
+                $this->validateAuthorization();
 
                 // call preExec callback
                 $this->callPre();
@@ -438,26 +448,26 @@ class FieldFactory
     }
 
     /**
-     * Sets the guardian that protects the route.
+     * Sets the scopes of which at least one is required to access the resource.
      *
      * @param string $name
      * @return $this
      */
-    public function guardian(string $name = "default"): static
+    public function scopes(array $scopes): static
     {
-        $this->guardian = $name;
+        $this->scopes = $scopes;
         return $this;
     }
 
     /**
-     * Ensures that the id of the logged-in user, provided by a guardian, equals
-     * the id passed to the field "id"-parameter.
+     * Sets the scopes of which at least one is required to access the resource while additionaly ensuring
+     * that the authenticated user is the identity of the ressource.
      *
      * @return $this
      */
-    public function onlyOwner(string $guardianName = "default"): static
+    public function identityScopes(array $scopes): static
     {
-        $this->ownerGuardian = $guardianName;
+        $this->identityScopes = $scopes;
         return $this;
     }
 
@@ -491,34 +501,42 @@ class FieldFactory
      *
      * @throws UnauthenticatedError
      */
-    private function validateRequestWithGuardian(mixed $id = null): void
+    private function validateAuthorization(mixed $identifier = null): void
     {
-        throw new \Exception("NOT IMPLEMENTED");
-        // check if guardian is set.
-        if ($this->guardian !== null) {
-            // check if guardian exists and request not valid against guardian.
-            if (Auth::guardian($this->guardian) !== null
-                && !Auth::guardian($this->guardian)->validate(app("request"))) {
+        // check for scopes
+        if (!empty($this->scopes)) {
+            $matchedAnyScope = false;
 
-                // if the guardian cannot verify the request, check if owner guardian is set.
-                // if that is not the case, throw an UnauthenticatedError - but if it is, ensure
-                // that the requestor is the owner of the entry.
-                if ($this->ownerGuardian === null)
-                    throw new UnauthenticatedError("Access denied");
-                else if (Auth::guardian($this->ownerGuardian) !== null
-                    && (
-                        !Auth::guardian($this->ownerGuardian)->validate(app("request"))
-                        || Auth::guardian($this->ownerGuardian)->user()?->getIdentifier() !== $id
-                    ))
-                    throw new UnauthenticatedError("Access denied");
+            // iterate over all scopes
+            foreach ($this->scopes as $scope) {
+                if (request()->user()?->tokenCan($scope))
+                    return;
             }
-        } // else check if ownership guardian is set, exists, request is not valid or not the owner
-        else if ($this->ownerGuardian !== null
-            && Auth::guardian($this->ownerGuardian) !== null
-            && (
-                !Auth::guardian($this->ownerGuardian)->validate(app("request"))
-                || Auth::guardian($this->ownerGuardian)->user()?->getIdentifier() !== $id
-            ))
-            throw new UnauthenticatedError("Access denied");
+
+            // throw unauthenticated error if no scope matched
+            throw new UnauthenticatedError(
+                "Access denied. Missing one of the following scopes: [" .
+                implode(", ", $this->scopes) . "]");
+        }
+
+        // check for identity scopes
+        if (!empty($this->identityScopes)) {
+            $matchedAnyScope = false;
+
+            // iterate over all scopes
+            foreach ($this->identityScopes as $identityScope) {
+                $matchedAnyScope |= request()->user()?->tokenCan($identityScope);
+            }
+
+            // throw unauthenticated error if no scope matched
+            if (!$matchedAnyScope) {
+                throw new UnauthenticatedError(
+                    "Access denied. Missing one of the following scopes: [" .
+                    implode(", ", $this->identityScopes) . "]");
+            } else if (Auth::user()->getAuthIdentifier() != $identifier) {
+                throw new UnauthenticatedError(
+                    "Access denied. Requestor cannot prove identity and ownership of ressource entry.");
+            }
+        }
     }
 }
