@@ -429,7 +429,7 @@ class TypeFactory
 
         throw new UnauthenticatedError(
             "Access denied. Missing one of the following scopes: [" .
-            implode(", ", $this->scopes) . "]");
+            implode(", ", $scopes) . "]");
     }
 
     /**
