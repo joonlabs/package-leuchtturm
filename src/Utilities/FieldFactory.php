@@ -13,6 +13,7 @@ use GraphQL\Types\GraphQLNonNull;
 use GraphQL\Types\GraphQLString;
 use GraphQL\Types\GraphQLType;
 use http\Exception;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -297,8 +298,8 @@ class FieldFactory
                     // connect new entries
                     if ($relationship instanceof HasOne)
                         $relationship->save(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
-                    if ($relationship instanceof HasOneOrMany)
-                        $relationship->save(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
+                    if ($relationship instanceof BelongsTo)
+                        $relationship->associate(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
                 }
 
                 $success = $entry->update();
