@@ -477,6 +477,10 @@ class TypeFactory
 
         // add doc properties
         foreach ($this->docProperties as $name => $docProperty) {
+            // omit id on input type
+            if ($forInputType && $docProperty->getName() === "id")
+                continue;
+
             if (!in_array($name, $seenDocProperties)) {
                 // continue if is not writable on input type
                 if ($forInputType && !$docProperty->isWritable())
