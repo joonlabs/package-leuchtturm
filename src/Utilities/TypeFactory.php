@@ -423,7 +423,7 @@ class TypeFactory
 
         // iterate over all scopes
         foreach ($scopes as $scope) {
-            if (request()->user()?->tokenCan($scope))
+            if (request()->user("api")?->tokenCan($scope))
                 return;
         }
 

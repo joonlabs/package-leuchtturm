@@ -75,9 +75,15 @@ class FieldFactory
      * Scopes that needed to be present in the requests token to access the field while the requsting user
      * must be the identify of the ressource.
      *
-     * @var string|null
+     * @var array
      */
     private array $identityScopes = [];
+
+    /**
+     * Property of the authenticated user model that indicates the identity with the ressource.
+     * @var string
+     */
+    private string $identityProperty = "id";
 
     /**
      * The column / property in the model that referecnes the auhenticated user and should be used for identity
@@ -465,9 +471,10 @@ class FieldFactory
      *
      * @return $this
      */
-    public function identityScopes(array $scopes): static
+    public function identityScopes(array $scopes, $identityProperty = "id"): static
     {
         $this->identityScopes = $scopes;
+        $this->identityProperty = $identityProperty;
         return $this;
     }
 
@@ -507,9 +514,9 @@ class FieldFactory
         if (!empty($this->scopes)) {
             $matchedAnyScope = false;
 
-            // iterate over all scopes
+            // iterate over all scopes. if any scope matches, return and continue.
             foreach ($this->scopes as $scope) {
-                if (request()->user()?->tokenCan($scope))
+                if (request()->user("api")?->tokenCan($scope))
                     return;
             }
 
@@ -525,15 +532,15 @@ class FieldFactory
 
             // iterate over all scopes
             foreach ($this->identityScopes as $identityScope) {
-                $matchedAnyScope |= request()->user()?->tokenCan($identityScope);
+                $matchedAnyScope |= request()->user("api")?->tokenCan($identityScope);
             }
 
-            // throw unauthenticated error if no scope matched
+            // throw unauthenticated error if no scope matched or
             if (!$matchedAnyScope) {
                 throw new UnauthenticatedError(
                     "Access denied. Missing one of the following scopes: [" .
                     implode(", ", $this->identityScopes) . "]");
-            } else if (Auth::user()->getAuthIdentifier() != $identifier) {
+            } else if (Auth::guard("api")->user()->{$this->identityProperty} != $identifier) {
                 throw new UnauthenticatedError(
                     "Access denied. Requestor cannot prove identity and ownership of ressource entry.");
             }
