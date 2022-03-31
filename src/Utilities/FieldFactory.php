@@ -511,40 +511,79 @@ class FieldFactory
      */
     private function validateAuthorization(mixed $identifier = null): void
     {
-        // check for scopes
+        // check for scopes or identity scopes
         if (!empty($this->scopes)) {
-            $matchedAnyScope = false;
+            // if the request matches the scopes the execution can continue
+            if ($this->requestMatchesScopes())
+                return;
 
-            // iterate over all scopes. if any scope matches, return and continue.
-            foreach ($this->scopes as $scope) {
-                if (request()->user("api")?->tokenCan($scope))
-                    return;
-            }
-
-            // throw unauthenticated error if no scope matched
-            throw new UnauthenticatedError(
-                "Access denied. Missing one of the following scopes: [" .
-                implode(", ", $this->scopes) . "]");
-        }
-
-        // check for identity scopes
-        if (!empty($this->identityScopes)) {
-            $matchedAnyScope = false;
-
-            // iterate over all scopes
-            foreach ($this->identityScopes as $identityScope) {
-                $matchedAnyScope |= request()->user("api")?->tokenCan($identityScope);
-            }
-
-            // throw unauthenticated error if no scope matched or
-            if (!$matchedAnyScope) {
+            // if not, we have to ensure the identity scopes exist, otherwise we encounter an authentication error
+            if (empty($this->identityScopes))
+                // throw unauthenticated error if no scope matched
                 throw new UnauthenticatedError(
                     "Access denied. Missing one of the following scopes: [" .
-                    implode(", ", $this->identityScopes) . "]");
-            } else if (Auth::guard("api")->user()->{$this->identityProperty} != $identifier) {
-                throw new UnauthenticatedError(
-                    "Access denied. Requestor cannot prove identity and ownership of ressource entry.");
+                    implode(", ", array_merge($this->scopes, $this->identityScopes)) . "]");
+
+            // check if any identity scope matches
+            if ($this->requestMatchesIdentityScopes($identifier)) {
+                return;
             }
+
+            // throw unauthenticated error, as no identity scope matched
+            throw new UnauthenticatedError(
+                "Access denied. Requestor cannot prove identity and ownership of ressource entry.");
         }
+
+        // check for identity scopes only
+        if (!empty($this->identityScopes)) {
+            // check if any identity scope matches
+            if ($this->requestMatchesIdentityScopes($identifier)) {
+                return;
+            }
+
+            // throw unauthenticated error, as no identity scope matched
+            throw new UnauthenticatedError(
+                "Access denied. Requestor cannot prove identity and ownership of ressource entry.");
+        }
+    }
+
+    /**
+     * Returns whether the request is allowed by the identity scopes.
+     *
+     * @return bool
+     */
+    private function requestMatchesScopes(): bool
+    {
+        // iterate over all scopes. if any scope matches, return true.
+        foreach ($this->scopes as $scope) {
+            if (request()->user("api")?->tokenCan($scope))
+                return true;
+        }
+
+        // no identity scope matched
+        return false;
+    }
+
+    /**
+     * Returns whether the request is allowed by the identity scopes.
+     *
+     * @return bool
+     */
+    private function requestMatchesIdentityScopes(mixed $identifier = null): bool
+    {
+        // check if any scope matches
+        $matchedAnyScope = false;
+
+        // iterate over all identity scopes. if any scope matches, set $matchedAnyScope to true
+        foreach ($this->identityScopes as $identityScope) {
+            $matchedAnyScope |= request()->user("api")?->tokenCan($identityScope);
+        }
+
+        // if any scope matched, check if the requestor is the actual owner
+        if ($matchedAnyScope && Auth::guard("api")->user()->{$this->identityProperty} === $identifier)
+            return true;
+
+        // no identity scope matched
+        return false;
     }
 }
