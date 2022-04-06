@@ -373,11 +373,11 @@ class FieldFactory
      *
      * @return void
      */
-    public function callPre()
+    public function callPre(mixed &$args = null)
     {
         if ($this->preExec !== null) {
             $fn = $this->preExec;
-            return $fn(...func_get_args());
+            return $fn($args);
         }
     }
 
