@@ -295,13 +295,13 @@ class FieldFactory
                     $relationship = $entry->{$argument}();
 
                     // check if entries should be conected or disconnected
-                    if ($id === null){
+                    if ($id === null) {
                         // disconnect old entries
                         if ($relationship instanceof HasOne)
-                            throw new InternalServerError("Cannot disconnect a [HasOne] connection");
+                            continue;
                         if ($relationship instanceof BelongsTo)
                             $relationship->dissociate();
-                    }else{
+                    } else {
                         // connect new entries
                         if ($relationship instanceof HasOne)
                             $relationship->save(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
