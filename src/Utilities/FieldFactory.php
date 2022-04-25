@@ -4,6 +4,7 @@ namespace Leuchtturm\Utilities;
 
 use Closure;
 use GraphQL\Arguments\GraphQLFieldArgument;
+use GraphQL\Errors\InternalServerError;
 use GraphQL\Errors\UnauthenticatedError;
 use GraphQL\Fields\GraphQLTypeField;
 use GraphQL\Types\GraphQLBoolean;
@@ -290,16 +291,23 @@ class FieldFactory
                 }
 
                 foreach ($relationsToAddOne as $argument => $id) {
-                    if ($id === null)
-                        continue;
-
+                    // get the relationship
                     $relationship = $entry->{$argument}();
 
-                    // connect new entries
-                    if ($relationship instanceof HasOne)
-                        $relationship->save(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
-                    if ($relationship instanceof BelongsTo)
-                        $relationship->associate(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
+                    // check if entries should be conected or disconnected
+                    if ($id === null){
+                        // disconnect old entries
+                        if ($relationship instanceof HasOne)
+                            throw new InternalServerError("Cannot disconnect a [HasOne] connection");
+                        if ($relationship instanceof BelongsTo)
+                            $relationship->dissociate();
+                    }else{
+                        // connect new entries
+                        if ($relationship instanceof HasOne)
+                            $relationship->save(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
+                        if ($relationship instanceof BelongsTo)
+                            $relationship->associate(call_user_func("{$hasOne[$argument]->getType()}::find", $id));
+                    }
                 }
 
                 $success = $entry->update();
