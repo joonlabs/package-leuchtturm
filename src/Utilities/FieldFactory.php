@@ -272,7 +272,7 @@ class FieldFactory
                     // remove old entries
                     if ($relationship instanceof HasMany) {
                         foreach ($ids as $id) {
-                            $fkPropertyColumn = "{$pureName}_id";
+                            $fkPropertyColumn = $relationship->getForeignKeyName();
                             $relatedEntry = call_user_func("{$hasMany[$argument]->getType()}::where", $fkPropertyColumn, $entry->id)
                                 ->update([$fkPropertyColumn => null]);
                         }
