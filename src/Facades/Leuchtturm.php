@@ -11,6 +11,7 @@ use Leuchtturm\Vocab\Vocab;
 
 /**
  * @method static LeuchtturmManager setVocab(Vocab $vocab)
+ * @method static LeuchtturmManager registerFilter(string $name, callable $filter)
  * @method static TypeFactory create(string $dao, ?string $typename = null)
  * @method static GraphQLType build(string $dao)
  * @method static TypeFactory factory(string $dao)

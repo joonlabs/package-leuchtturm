@@ -354,19 +354,28 @@ class TypeFactory
                 // get dao from property
                 $dao = $property->getType();
                 $scopes = $property->getScopes();
+                $filters = $property->getFilters();
 
                 $fields[] = new GraphQLTypeField(
                     $fieldname,
                     $property->isNullable()
                         ? $this->manager->build($dao)
                         : new GraphQLNonNull($this->manager->build($dao)),
-                    resolve: function ($parent) use ($manager, $fieldname, $dao, $scopes) {
+                    resolve: function ($parent) use ($manager, $fieldname, $dao, $scopes, $filters) {
 
                         // protect with guards
                         $this->validateAuthorization($scopes);
 
+                        // get data
                         $daoClass = $manager->factory($dao)->getDAO();
-                        return $parent->{$fieldname};
+                        $data = $parent->{$fieldname};
+
+                        // execute filters if exist
+                        foreach($filters as $filter){
+                            $data = $this->manager->applyFilter($filter, $data);
+                        }
+
+                        return $data;
                     }
                 );
             }
@@ -390,17 +399,26 @@ class TypeFactory
                 // get the protecting scopes and inner type
                 $scopes = $property->getScopes();
                 $innerType = $this->manager->build($property->getType());
+                $filters = $property->getFilters();
 
                 $fields[] = new GraphQLTypeField(
                     $fieldname,
                     new GraphQLNonNull(new GraphQLList(
                         $property->isNullable() ? $innerType : new GraphQLNonNull($innerType)
                     )),
-                    resolve: function ($parent) use ($scopes, $fieldname) {
+                    resolve: function ($parent) use ($scopes, $fieldname, $filters) {
                         // protect with guards
                         $this->validateAuthorization($scopes);
 
-                        return $parent->{$fieldname};
+                        // get data
+                        $data = $parent->{$fieldname};
+
+                        // execute filters if exist
+                        foreach($filters as $filter){
+                            $data = $this->manager->applyFilter($filter, $data);
+                        }
+
+                        return $data;
                     }
                 );
             }

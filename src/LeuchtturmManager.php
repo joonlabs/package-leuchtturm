@@ -31,6 +31,13 @@ class LeuchtturmManager
     public Vocab $vocab;
 
     /**
+     * Holds all filters registered.
+     *
+     * @var TypeFactory[]
+     */
+    public array $filters = [];
+
+    /**
      * @param Vocab $vocab
      * @return LeuchtturmManager
      */
@@ -38,6 +45,34 @@ class LeuchtturmManager
     {
         $this->vocab = $vocab;
         return $this;
+    }
+
+    /**
+     * @param string $name
+     * @param callable $filter
+     * @return LeuchtturmManager
+     */
+    public function registerFilter(string $name, callable $filter): LeuchtturmManager
+    {
+        $this->filters[$name] = $filter;
+        return $this;
+    }
+
+    /**
+     * @param string $name
+     * @param mixed|null $data
+     * @return LeuchtturmManager
+     * @throws LeuchtturmException
+     */
+    public function applyFilter(string $name, mixed $data = null): mixed
+    {
+        // check if filter exists
+        if(!array_key_exists($name, $this->filters)){
+            throw new LeuchtturmException("No Leuchtturm filter named [$name] registered.");
+        }
+
+        // execute filter and return result
+        return $this->filters[$name]($data);
     }
 
     /**

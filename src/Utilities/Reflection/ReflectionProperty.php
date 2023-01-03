@@ -51,6 +51,13 @@ class ReflectionProperty
     private array $scopes = [];
 
     /**
+     * Filters to be applied when a property is read.
+     *
+     * @var array
+     */
+    private array $filters = [];
+
+    /**
      * Determines wether the property is an array type.
      *
      * @var bool
@@ -189,6 +196,24 @@ class ReflectionProperty
     }
 
     /**
+     * Adds read filters to be applied to the property data.
+     *
+     * @param string|array $filters
+     * @return $this
+     */
+    public function addFilter(string|array $filters): static
+    {
+        if (is_string($filters))
+            $filters = [$filters];
+
+        foreach ($filters as $filter) {
+            $this->filters[] = $filter;
+        }
+
+        return $this;
+    }
+
+    /**
      * Returns all scopes for the property.
      *
      * @return array
@@ -196,6 +221,26 @@ class ReflectionProperty
     public function getScopes(): array
     {
         return $this->scopes;
+    }
+
+    /**
+     * Returns all read filters for the property.
+     *
+     * @return array
+     */
+    public function getFilters(): array
+    {
+        return $this->filters;
+    }
+
+    /**
+     * Returns if the property has read-filters.
+     *
+     * @return bool
+     */
+    public function hasFilters(): bool
+    {
+        return empty($this->getFilters());
     }
 
     /**

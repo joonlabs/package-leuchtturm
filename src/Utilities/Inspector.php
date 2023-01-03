@@ -59,7 +59,8 @@ class Inspector
                 ->setKind($property["kind"])
                 ->setHasDefaultValue(false)
                 ->setIsArrayType($property["isArray"])
-                ->addScope($property["scopes"]);
+                ->addScope($property["scopes"])
+                ->addFilter($property["filters"]);
         }, $properties);
 
         return static::fullQualifyProperties($properties, $reflection->getNamespaceName());
@@ -130,7 +131,8 @@ class Inspector
                     "kind" => $kind,
                     "type" => $matches[2][0],
                     "name" => substr($matches[6][0], 1),
-                    "scopes" => []
+                    "scopes" => [],
+                    "filters" => [],
                 ];
             }
         }
@@ -146,6 +148,21 @@ class Inspector
                 foreach($textProperties as &$property){
                     if($property["name"] === $name)
                         $property["scopes"][] = $matches[3][0];
+                }
+            }
+        }
+
+        // match read filters
+        foreach ($lines as $line) {
+            $regex = '/ ?\*? ?@filter (\$([A-Z]|[a-z]|_)+) (\??(\\\\?([A-Z]|[a-z]|_|\.)+)+)/m';
+
+            preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
+
+            if (!empty($matches[0])) {
+                $name = substr($matches[1][0], 1);
+                foreach($textProperties as &$property){
+                    if($property["name"] === $name)
+                        $property["filters"][] = $matches[3][0];
                 }
             }
         }
