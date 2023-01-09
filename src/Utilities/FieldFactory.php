@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
 use Illuminate\Support\Facades\Auth;
 use Leuchtturm\LeuchtturmException;
+use Leuchtturm\LeuchtturmManager;
 use ReflectionException;
 
 class FieldFactory
@@ -108,6 +109,30 @@ class FieldFactory
      * @var Closure|null
      */
     private ?Closure $postExec = null;
+
+    /**
+     * Filters that are applied at execution.
+     *
+     * @var array
+     */
+    private array $filters = [];
+
+    /**
+     * LeuchtturmManager instance for resolviong other type factories.
+     *
+     * @var LeuchtturmManager
+     */
+    private LeuchtturmManager $manager;
+
+    /**
+     * Creates a new FieldFactory.
+     *
+     * @param LeuchtturmManager $manager
+     */
+    public function __construct(LeuchtturmManager $manager)
+    {
+        $this->manager = $manager;
+    }
 
     /**
      * TypeFactory for building type and input type of the GraphQLTypeField.
@@ -229,6 +254,9 @@ class FieldFactory
                 // get entry
                 $entry = call_user_func("$dao::find", $args["id"]);
 
+                // filter entry
+                $entry = $this->applyFilters($entry);
+
                 // call postExec callback
                 $this->callPost($entry);
 
@@ -259,6 +287,11 @@ class FieldFactory
 
                 // get entry
                 $entry = call_user_func("$dao::find", $args["id"]);
+
+                // apply filter
+                $entry = $this->applyFilters($entry);
+
+                // update properties
                 foreach ($args[$pureName] as $property => $value)
                     $entry->{$property} = $value;
 
@@ -326,6 +359,11 @@ class FieldFactory
 
                 // delete entry
                 $entry = call_user_func("$dao::find", $args["id"]);
+
+                // apply filter
+                $entry = $this->applyFilters($entry);
+
+                // delete entry
                 $success = $entry->delete();
 
                 // call postExec callback
@@ -340,7 +378,11 @@ class FieldFactory
                 // call preExec callback
                 $this->callPre();
 
+                // get entries
                 $entries = call_user_func("$dao::all");
+
+                // filter entries
+                $entries = $this->applyFilters($entries);
 
                 // call postExec callback
                 $this->callPost($entries);
@@ -400,6 +442,24 @@ class FieldFactory
             $fn = $this->postExec;
             return $fn(...func_get_args());
         }
+    }
+
+    /**
+     * Calls the postExec callback.
+     *
+     * @param $data
+     * @return mixed
+     * @throws LeuchtturmException
+     */
+    public function applyFilters($data): mixed
+    {
+        // iterate over all filters
+        foreach ($this->filters as $filter) {
+            $data = $this->manager->applyFilter($filter, $data);
+        }
+
+        // return data
+        return $data;
     }
 
     /**
@@ -508,6 +568,18 @@ class FieldFactory
     public function post(Closure $callback): static
     {
         $this->postExec = $callback;
+        return $this;
+    }
+
+    /**
+     * Sets the filters used for this resolver.
+     *
+     * @param array $filters
+     * @return $this
+     */
+    public function filters(array $filters): static
+    {
+        $this->filters = $filters;
         return $this;
     }
 

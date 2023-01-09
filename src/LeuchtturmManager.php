@@ -145,7 +145,7 @@ class LeuchtturmManager
         // create type if not exists
         $this->createIfNotExists($dao);
 
-        return (new FieldFactory())
+        return (new FieldFactory($this))
             ->operation(FieldFactory::CREATE)
             ->name($fieldname ?? $this->vocab->operationC($this->getFieldNameForClass($dao)))
             ->pureName($this->getFieldNameForClass($dao))
@@ -162,7 +162,7 @@ class LeuchtturmManager
         // create type if not exists
         $this->createIfNotExists($dao);
 
-        return (new FieldFactory())
+        return (new FieldFactory($this))
             ->operation(FieldFactory::READ)
             ->name($fieldname ?? $this->vocab->operationR($this->getFieldNameForClass($dao)))
             ->pureName($this->getFieldNameForClass($dao))
@@ -179,7 +179,7 @@ class LeuchtturmManager
         // create type if not exists
         $this->createIfNotExists($dao);
 
-        return (new FieldFactory())
+        return (new FieldFactory($this))
             ->operation(FieldFactory::UPDATE)
             ->name($fieldname ?? $this->vocab->operationU($this->getFieldNameForClass($dao)))
             ->pureName($this->getFieldNameForClass($dao))
@@ -196,7 +196,7 @@ class LeuchtturmManager
         // create type if not exists
         $this->createIfNotExists($dao);
 
-        return (new FieldFactory())
+        return (new FieldFactory($this))
             ->operation(FieldFactory::DELETE)
             ->name($fieldname ?? $this->vocab->operationD($this->getFieldNameForClass($dao)))
             ->pureName($this->getFieldNameForClass($dao))
@@ -213,7 +213,7 @@ class LeuchtturmManager
         // create type if not exists
         $this->createIfNotExists($dao);
 
-        return (new FieldFactory())
+        return (new FieldFactory($this))
             ->operation(FieldFactory::ALL)
             ->name($fieldname ?? $this->vocab->operationA($this->getFieldNameForClass($dao)))
             ->pureName($this->getFieldNameForClass($dao))
