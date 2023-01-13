@@ -527,6 +527,27 @@ class TypeFactory
         return new GraphQLTypeField(
             $property->getName(),
             $this->buildTypeFromProperty($property),
+            resolve: function ($source, $args, $contextValue, $info) use($property) {
+                // protect with guards
+                $this->validateAuthorization($property->getScopes());
+
+                // if $source is an iterable (e.g. array), get value by key (field name)
+                if (is_iterable($source)) {
+                    return $source[$info["fieldName"]] ?? null;
+                }
+                // if $source is an object, get value by either calling the getter or trying to acces property directly
+                if (is_object($source)) {
+                    $propertyName = $info["fieldName"];
+                    $methodName = "get" . ucwords($info["fieldName"]);
+                    // try to use the getter
+                    if (method_exists($source, $methodName)) {
+                        return $source->{$methodName}();
+                    }
+                    // get the property
+                    return $source->{$propertyName};
+                }
+                return null;
+            },
             defaultValue: $property->hasDefaultValue() ? $property->getDefaultValue() : null
         );
     }
