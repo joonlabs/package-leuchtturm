@@ -304,12 +304,13 @@ class FieldFactory
 
                     // remove old entries
                     if ($relationship instanceof HasMany) {
-                        foreach ($ids as $id) {
-                            $fkPropertyColumn = $relationship->getForeignKeyName();
-                            $relatedEntry = call_user_func("{$hasMany[$argument]->getType()}::where", $fkPropertyColumn, $entry->id)
-                                ->update([$fkPropertyColumn => null]);
-                        }
+                        // set foreign key to null for all entries that are not in the new list of entries to connect.
+                        $fkPropertyColumn = $relationship->getForeignKeyName();
+                        call_user_func("{$hasMany[$argument]->getType()}::where", $fkPropertyColumn, $entry->id)
+                            ->whereNotIn("id", $ids)
+                            ->update([$fkPropertyColumn => null]);
                     }
+
                     if ($relationship instanceof BelongsToMany)
                         $relationship->detach();
 
