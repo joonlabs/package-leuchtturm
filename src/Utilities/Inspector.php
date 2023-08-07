@@ -139,7 +139,7 @@ class Inspector
 
         // match scopes
         foreach ($lines as $line) {
-            $regex = '/ ?\*? ?@oauth-scope (\$([A-Z]|[a-z]|_)+) (\??(\\\\?([A-Z]|[a-z]|_|\.)+)+)/m';
+            $regex = '/ ?\*? ?@oauth-scope (\$([A-Z]|[a-z]|[0-9]|_)+) (\??(\\\\?([A-Z]|[a-z]|[0-9]|_|\.)+)+)/m';
 
             preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
 
@@ -154,7 +154,7 @@ class Inspector
 
         // match read filters
         foreach ($lines as $line) {
-            $regex = '/ ?\*? ?@filter (\$([A-Z]|[a-z]|_)+) (\??(\\\\?([A-Z]|[a-z]|_|\.)+)+)/m';
+            $regex = '/ ?\*? ?@filter (\$([A-Z]|[a-z]|[0-9]|_)+) (\??(\\\\?([A-Z]|[a-z]|[0-9]|_|\.)+)+)/m';
 
             preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
 
