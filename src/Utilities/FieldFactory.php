@@ -201,6 +201,9 @@ class FieldFactory
                 // call preExec callback
                 $this->callPre($args);
 
+                // build blueprint model
+                $blueprint = new $dao();
+
                 // store ids to other relations
                 $relationsToAddMany = [];
                 foreach ($hasMany as $field => $value) {
@@ -212,7 +215,8 @@ class FieldFactory
                 // add one to one or one to many relations as direct fieldsin args
                 foreach ($hasOne as $field => $value) {
                     if (array_key_exists($field, $args[$pureName])) {
-                        $args[$pureName][$field . "_id"] = $args[$pureName][$field];
+                        $relationship = $blueprint->{$field}();
+                        $args[$pureName][$relationship->getForeignKeyName()] = $args[$pureName][$field];
                         unset($args[$pureName][$field]);
                     }
                 }
